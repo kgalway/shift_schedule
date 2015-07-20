@@ -11,7 +11,9 @@ import pytz
 
 
 from people import people, emails
+from shifts import shift_durations, shift_map
 from calendar_utils import copy_current_to_archive, cancel_calendar, cancel_event, person_calendar
+
 
 
 logger = logging.getLogger()
@@ -36,37 +38,6 @@ if __name__ == '__main__':
     pacific = pytz.timezone('America/Vancouver')
     today = datetime.today().replace(tzinfo = pacific)
     
-    people = ({'RR':'ryan.robertson', 
-               'DR':'derek.russell', 
-               'KG':'kelly.galway',
-               'OT':'orang.towfig', 
-               'JNor':'jeff.norman', 
-               'JNei':'jonathan.neill',
-               'GC':'grant.conroy',
-               'BL':'rebecca.luke',
-               'MMi':'martha.mitherakis',
-               'GM':'greg.macdonald',
-               'RP':'roberto.pavan',
-               'JM':'joey.mikawoz',
-               'PV':'pierre.vaillancourt',
-               'ROB':'ralph.beyer',
-               'MRM':'mike.morgan',
-               'JB':'joey.bennett',
-               'DZ':'dan.zavoral',
-               'MH':'michael.ho', 
-               'RG2':'rob.geisthardt',
-               'KF':'kyle.ferguson',
-               'DH':'dan.harney',
-               'DF':'demetrios.fotiou'
-              })
-    
-    emails = {key: val + '@powerex.com' for key, val in people.items()}
-    shift_durations = {'afternoon':timedelta(hours = 8.5), 'day':timedelta(hours = 9.5), 'night':timedelta(hours = 6.5), 'other':timedelta(hours = 9)}
-    
-    shift_map = ({'A3':(time(15,15), shift_durations['afternoon']), 'D3':(time(6,15),shift_durations['day']), 'N3':(time(23,55),shift_durations['night']),
-               'D1':(time(5,15), shift_durations['day']), 'A1':(time(14,15),shift_durations['afternoon']), 'N1':(time(23,15),shift_durations['night']),
-               'D2':(time(6,0),shift_durations['day']), 'A2':(time(15,0),shift_durations['afternoon']), 'N2':(time(23,55),shift_durations['night']),
-               'other':(time(7,0),shift_durations['other'])})   
  
     
     if to_parse is not None:
@@ -77,9 +48,6 @@ if __name__ == '__main__':
         dirpath = r'Documents/Programming/general'
     else:
         dirpath = r'C:\temp'
-
-    
-    
 
     schedule_csv_filename = 'schedule.csv'
 
