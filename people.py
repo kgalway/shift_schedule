@@ -19,7 +19,8 @@ people = ({'RR':'ryan.robertson',
                'RG2':'rob.geisthardt',
                'KF':'kyle.ferguson',
                'DH':'dan.harney',
-               'DF':'demetrios.fotiou'
+               'DF':'demetrios.fotiou',
+               'DK':'darryl.kaiman'
               })
     
 emails = {key: val + '@powerex.com' for key, val in people.items()}
