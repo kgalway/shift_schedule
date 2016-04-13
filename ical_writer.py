@@ -1,15 +1,37 @@
+"""
+Written by Kelly Galway 
+
+
+
+A program to convert a csv-based schedule into a .ics file suitable for importing 
+into a Google Calendar 
+
+Contains functionality to track changes from a previous schedule and have any updates 
+be reflected in the new schedule. 
+
+App-specic imports include a "shifts" module containing a dictionary of name:(startime, duration)
+key:value pairs describing how the shift from the CSV should be reflected in the calendar 
+
+The people module exports a dictionary of initials to person names and a dictionary of 
+initials to email addresses for future development of an auto-mailer when the new shift 
+schedule comes out. 
+
+
+
+"""
+
 import logging
 import sys
 import os
 import shutil
+from datetime import timedelta, time, datetime  
 
-
+# third-party imports 
 import ics
 import pandas as pd 
-from datetime import timedelta, time, datetime  
 import pytz 
 
-
+# app-specific modules 
 from people import people, emails
 from shifts import shift_durations, shift_map
 
@@ -23,27 +45,39 @@ handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 def copy_current_to_archive():
+    """ copy all 'current' files to 'archive' folder. Used to prep for a new schedule coming in """ 
     archive = os.path.join('.', 'archive')
     current = os.path.join('.','current')
     if os.listdir(current):
     # if there is actualy anything in the current folder 
         for fil in os.listdir(current):
+            if not fil.endswith('.ics'):
+                # only want .ics type files
+                continue
             archive_path = os.path.join(archive, fil)
             current_path = os.path.join(current,fil)
             shutil.copyfile(current_path, archive_path)
             logger.info('copied {0} to {1}'.format(current_path, archive_path))
 
 def cancel_event(event):
+    """ Cancel an Event instance previously-good event. 
+    return the modified instance 
+    """ 
     event.status = 'CANCELLED'
     event.method = 'CANCEL'
     event.sequence = 2
     return event 
 
 def cancel_calendar(calendar):
+    """ Given a Calendar instance, go through and cancel all 'live' events and write these 
+    cancelled events to a new Calendar instance. These cancelled events are appended to a new Calendar 
+    to make sure that only the latest shift schedule is reflected in the Calendar, but also deleting 
+    all the old events
+    """ 
     new_cal = ics.Calendar()
     for event in calendar.events:
         if event.status == 'CANCELLED' or event.begin < datetime.today().replace(tzinfo = pacific):
-            # found an already-cancelled event. Skip it 
+            # don't consider events in the past or events that were already cancelled 
             logger.debug('Ignoring event {0}'.format(str(event)))
             continue
         event = cancel_event(event)
@@ -51,7 +85,7 @@ def cancel_calendar(calendar):
     return new_cal         
 
 def person_calendar(schedule):
-    """ create a list of events for a person based on a tuple of (date, shift) tuples """
+    """ create a ics.Calendar instance for a person based on a tuple of (date, shift) tuples """
     cal = ics.Calendar() 
       
     for date, shift in schedule:
@@ -75,6 +109,7 @@ def person_calendar(schedule):
     return cal
 
 def write_ical(person, calendar):
+    """ Wrapper around some boilerplate to actually write the calendar """ 
     dirpath = 'current'
     filename = person + '.ics'
     filepath = os.path.join(dirpath,filename)
@@ -87,7 +122,8 @@ def write_ical(person, calendar):
 if __name__ == '__main__':
     
     
-
+    # optionally set initials as cmd line args for specific calendars to run. Default is to run all by 
+    # not inputting any cmd line args 
     if len(sys.argv) > 1:
         to_parse = sys.argv[1:]
     else:
@@ -99,6 +135,7 @@ if __name__ == '__main__':
  
     
     if to_parse is not None:
+        # over-write global emails if argv are given
         emails = {key:val for key,val in emails.items() if key in to_parse}
     
     if sys.platform == 'darwin':
@@ -114,7 +151,9 @@ if __name__ == '__main__':
     logger.info('searching in directory {0}'.format(dirpath))
     
     os.chdir(dirpath)
-    # copy old files over 
+
+    # copy .ics files in ./current to ./archive so that we can use the ./archive 
+    # files as a reference for cancelling any stale events 
     copy_current_to_archive()
 
     df = pd.read_csv(schedule_csv_filename, parse_dates = [0], index_col = [0])
@@ -123,7 +162,7 @@ if __name__ == '__main__':
     dates = df.index.tolist()
 
     for col in df:
-        # looping through people
+        # looping through people as cols in the dataframe and getting their shift schedule 
         if col not in emails:
             logger.info('skipping {0}'.format(col))
             continue 
@@ -131,11 +170,12 @@ if __name__ == '__main__':
         shifts = df[col].tolist()
         schedule = [(date, shift) for date,shift in zip(dates, shifts)]
 
-        # get a new Calendar instance from the list of (date, shift) values 
+        # create a new Calendar instance from the list of (date, shift) values 
         calendar = person_calendar(schedule)
         logger.info('parsed calendar for {0}'.format(col))
         
-        # read and delete old calendar, if it exists
+        # read and cancel all events in the previous version of the calendar located in the ./archive 
+        # folder, if it exists 
         archive = 'archive'
         fil = col + '.ics'
         archive_path = os.path.join(archive,fil)
@@ -155,9 +195,9 @@ if __name__ == '__main__':
         write_ical(col, calendar)
         logger.info('wrote calendar for {0}'.format(col))
     handler.close()
-    raw_input('Press Any Key to Exit')
+    sys.exit()
 
-handler.close()
+
 
     
 
